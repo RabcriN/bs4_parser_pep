@@ -32,17 +32,10 @@ def pytest_make_parametrize_id(config, val):
 
 
 @pytest.fixture(scope='function')
-def tempfile_path(tmpdir_factory) -> Generator[Path, None, None]:
-    """Get a unique tempfile path"""
-    yield BASE_DIR / 'tests' / 'fixture_data' / 'mock_db.db'
-
-
-@pytest.fixture(scope='function')
-def tempfile_session(tempfile_path) -> CachedSession:
+def tempfile_session() -> CachedSession:
     """Get a CachedSession using a temporary SQLite db"""
     yield CachedSession(
-        cache_name=tempfile_path,
-        backend='sqlite',
+        backend='memory',
         allowable_methods=ALL_METHODS,
     )
 

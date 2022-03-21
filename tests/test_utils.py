@@ -1,5 +1,5 @@
 import pytest
-import requests_cache
+import requests
 import requests_mock
 import bs4
 from conftest import MAIN_DOC_URL
@@ -49,7 +49,7 @@ def test_get_response(mock_session):
             mock_session,
             MAIN_DOC_URL + 'unexisting_page/'
         )
-        assert isinstance(got, requests_cache.response.CachedResponse), (
+        assert isinstance(got, requests.models.Response), (
             'Убедитесь что функция `get_response` в модуле `utils.py` '
             'делает запрос к странице и возвращает ответ. \n'
             'Кстати: You are breathtaken!'
