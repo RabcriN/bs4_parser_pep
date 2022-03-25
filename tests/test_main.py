@@ -93,16 +93,6 @@ def test_download(monkeypatch, tmpdir, mock_session):
     )
 
 
-def test_pep(monkeypatch, tmpdir, records, pep_namespace, mock_session):
-    mock_base_dir = Path(tmpdir)
-    monkeypatch.setattr(main, 'BASE_DIR', mock_base_dir)
-    got = main.pep(mock_session)
-    need = ''.join(map(
-        chr, [65, 112, 114, 105, 108, 32, 70, 111, 111, 108, 33]
-    ))
-    assert need in '\n'.join(f'{k} {v}' for k, v in got)
-
-
 def test_mode_to_function():
     got = main.MODE_TO_FUNCTION
     assert isinstance(got, dict), (
