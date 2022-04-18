@@ -31,7 +31,7 @@ def test_main_file():
 
 def test_whats_new(mock_session):
     got = main.whats_new(mock_session)
-    header = ('Ссылка на статью', 'Заголовок', 'Редактор, Aвтор')
+    header = ('Ссылка на статью', 'Заголовок', 'Редактор, Автор')
     assert isinstance(got, list), (
         'Функция `whats_new` должна возвращать объект типа `list`'
     )
