@@ -51,8 +51,8 @@ def test_control_output_pretty(capsys, records, cli_arg, part_output):
     cli_args('latest-versions', 'file'),
     cli_args('pep', 'file'),
 ])
-def test_control_output_file(monkeypatch, tmpdir, records, cli_arg):
-    mock_base_dir = Path(tmpdir)
+def test_control_output_file(monkeypatch, tmp_path, records, cli_arg):
+    mock_base_dir = Path(tmp_path)
     monkeypatch.setattr(outputs, 'BASE_DIR', mock_base_dir)
 
     records = records(cli_arg.mode)
