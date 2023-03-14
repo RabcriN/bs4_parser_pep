@@ -1,5 +1,7 @@
+import errno
 import logging
 import re
+from typing import Any, Dict, List, Optional, Tuple, Type
 from urllib.parse import urljoin
 
 import requests_cache
@@ -7,19 +9,22 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, EXPECTED_STATUS, MAIN_DOC_URL, PEP_URL
+from constants import (BASE_DIR, EXPECTED_STATUS, LATEST_VERSION_PATTERN,
+                       LXML_PARSER, MAIN_DOC_URL, PEP_URL)
 from outputs import control_output
 from utils import find_tag, get_response
 
 
-def whats_new(session):
+def whats_new(
+    session: Type[Any]
+) -> Optional[List[Tuple[str, str, str]]]:
     whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
 
     response = get_response(session, whats_new_url)
     if response is None:
-        return
+        return None
 
-    soup = BeautifulSoup(response.text, features='lxml')
+    soup = BeautifulSoup(response.text, LXML_PARSER)
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
     sections_by_python = div_with_ul.find_all(
@@ -40,7 +45,7 @@ def whats_new(session):
         if response is None:
             continue
 
-        soup = BeautifulSoup(response.text, features='lxml')
+        soup = BeautifulSoup(response.text, LXML_PARSER)
         h1 = find_tag(soup, 'h1')
         dl = find_tag(soup, 'dl')
         dl_text = dl.text.replace('\n', ' ')
@@ -55,12 +60,14 @@ def whats_new(session):
     return results
 
 
-def latest_versions(session):
+def latest_versions(
+    session: Type[Any]
+) -> Optional[List[Tuple[str, str, str]]]:
     response = get_response(session, MAIN_DOC_URL)
     if response is None:
-        return
+        return None
 
-    soup = BeautifulSoup(response.text, features='lxml')
+    soup = BeautifulSoup(response.text, LXML_PARSER)
     sidebar = find_tag(soup, 'div', attrs={'class': 'sphinxsidebarwrapper'})
     ul_tags = sidebar.find_all('ul')
     for ul in ul_tags:
@@ -71,26 +78,33 @@ def latest_versions(session):
             raise Exception('Python version list has not found')
 
     results = [('Link', 'Version', 'Status')]
-    pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
         link = a_tag['href']
         text = (a_tag.text)
-        text_match = re.search(pattern, text)
+        text_match = re.search(LATEST_VERSION_PATTERN, text)
         try:
-            version, status = (text_match.group('version', 'status'))
+            version, status = (
+                text_match.group('version', 'status')  # type: ignore
+                # Mypy does not really understand exceptions on a deep level
+                # -- in this case, does not understand that since you're
+                # catching the AttributeError, it can ignore the
+                # "what if regex.match(path) is None?" case.
+            )
         except AttributeError:
             version, status = text, ''
         results.append((link, version, status))
     return results
 
 
-def download(session):
+def download(
+    session: Type[Any]
+) -> None:
     downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
     response = get_response(session, downloads_url)
     if response is None:
         return
 
-    soup = BeautifulSoup(response.text, features='lxml')
+    soup = BeautifulSoup(response.text, LXML_PARSER)
     table_tag = find_tag(soup, 'table', {'class': 'docutils'})
     pdf_a4_tag = find_tag(
         table_tag, 'a', {'href': re.compile(r'.+pdf-a4\.zip$')}
@@ -100,25 +114,33 @@ def download(session):
 
     filename = archive_url.split('/')[-1]
     downloads_dir = BASE_DIR / 'downloads'
-    downloads_dir.mkdir(exist_ok=True)
+    try:
+        downloads_dir.mkdir(exist_ok=True)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST:
+            raise
+        pass
     archive_path = downloads_dir / filename
 
     response = session.get(archive_url)
+    assert response is not None
     with open(archive_path, 'wb') as file:
         file.write(response.content)
     print(f'You can find your downloaded file here: {archive_path}')
     logging.info(f'You can find your downloaded file here: {archive_path}')
 
 
-def pep(session):
+def pep(
+    session: Type[Any]
+) -> Optional[List[Tuple[str, str]]]:
     response = get_response(session, PEP_URL)
     if response is None:
-        return
-    soup = BeautifulSoup(response.text, features='lxml')
+        return None
+    soup = BeautifulSoup(response.text, LXML_PARSER)
     pep_by_index = find_tag(soup, 'section', {'id': 'numerical-index'})
     body = find_tag(pep_by_index, 'tbody')
     tr_tags = body.find_all('tr')
-    status_counter = dict()
+    status_counter: Dict[str, int] = dict()
     for tag in tqdm(
             tr_tags,
             desc='PEP parsing progress:',
@@ -129,7 +151,8 @@ def pep(session):
 
         pep_link = urljoin(PEP_URL, tag_link['href'])
         new_response = get_response(session, pep_link)
-        new_soup = BeautifulSoup(new_response.text, features='lxml')
+        assert new_response is not None
+        new_soup = BeautifulSoup(new_response.text, LXML_PARSER)
         link_content = find_tag(new_soup, 'section', {'id': 'pep-content'})
         link_dl_tag = find_tag(link_content, 'dl')
         link_dt_status = link_dl_tag.find(
@@ -147,7 +170,7 @@ def pep(session):
             status_counter[link_status] = 1
         else:
             status_counter[link_status] += 1
-    results = [('Status', 'Quantity')]
+    results: List[Tuple[Any, Any]] = [('Status', 'Quantity')]
     total = 0
     for key, value in status_counter.items():
         results.append((key, value))
@@ -164,7 +187,7 @@ MODE_TO_FUNCTION = {
 }
 
 
-def main():
+def main() -> None:
     configure_logging()
     logging.info('Parser has been started!')
 

@@ -1,13 +1,17 @@
 import csv
 import datetime as dt
 import logging
+from typing import Any, List, Tuple, Type, Union
 
 from prettytable import PrettyTable
 
 from constants import BASE_DIR, DATETIME_FORMAT
 
 
-def control_output(results, cli_args):
+def control_output(
+    results: Union[List[Tuple[str, str]], List[Tuple[str, str, str]]],
+    cli_args: Any
+) -> None:
     output = cli_args.output
     if output == 'pretty':
         pretty_output(results)
@@ -17,12 +21,16 @@ def control_output(results, cli_args):
         default_output(results)
 
 
-def default_output(results):
+def default_output(
+    results: Union[List[Tuple[str, str]], List[Tuple[str, str, str]]],
+) -> None:
     for row in results:
         print(*row)
 
 
-def pretty_output(results):
+def pretty_output(
+    results: Union[List[Tuple[str, str]], List[Tuple[str, str, str]]],
+) -> None:
     table = PrettyTable()
     table.field_names = results[0]
     table.align = 'l'
@@ -30,7 +38,10 @@ def pretty_output(results):
     print(table)
 
 
-def file_output(results, cli_args):
+def file_output(
+    results: Union[List[Tuple[str, str]], List[Tuple[str, str, str]]],
+    cli_args: Type[Any]
+) -> None:
     results_dir = BASE_DIR / 'results'
     results_dir.mkdir(exist_ok=True)
     parser_mode = cli_args.mode
